@@ -1,0 +1,91 @@
+body{
+    margin:0;
+    font-family:Arial;
+    background:#e6f0fa;
+}
+
+header{
+    background:#0a1f44;
+    color:white;
+    padding:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+nav{
+    background:#123a7a;
+    padding:10px;
+}
+
+nav a{
+    color:white;
+    margin-right:15px;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.form-section{
+    padding:20px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+input, select{
+    padding:8px;
+    flex:1 1 200px;
+}
+
+button{
+    background:#0a1f44;
+    color:white;
+    padding:10px;
+    border:none;
+    cursor:pointer;
+}
+
+.kanban{
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+    padding:20px;
+}
+
+.col{
+    flex:1 1 300px;
+    background:white;
+    padding:15px;
+    border-radius:8px;
+    min-height:250px;
+}
+
+.task{
+    background:#f1f5f9;
+    padding:10px;
+    margin-bottom:10px;
+    border-left:5px solid;
+}
+
+#alta .task{border-color:red;}
+#media .task{border-color:orange;}
+#baixa .task{border-color:green;}
+
+.login-body{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    background:#0a1f44;
+}
+
+.login-box{
+    background:white;
+    padding:40px;
+    border-radius:10px;
+    width:320px;
+    text-align:center;
+}
+
+.logo{width:150px;}
+.logo-small{width:100px;}

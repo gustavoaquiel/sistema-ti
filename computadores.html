@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computadores - Sistema TI</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins', sans-serif;}
+body{
+    background: linear-gradient(135deg,#0a1f44,#123a7a,#1e90ff);
+    min-height:100vh;
+    color:white;
+    display:flex;
+    flex-direction:column;
+}
+header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 40px;
+    background:rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+}
+header img{height:40px;}
+nav a{color:white;margin-left:20px;text-decoration:none;font-weight:500;}
+nav a:hover{opacity:0.7;}
+.container{
+    width:95%;
+    max-width:1200px;
+    margin:30px auto;
+    flex:1;
+}
+.form-area{
+    background:white;
+    color:#333;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.2);
+    margin-bottom:25px;
+}
+.form-area input{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    margin:5px;
+}
+.form-area button{
+    background:#0a1f44;
+    color:white;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    cursor:pointer;
+}
+.form-area button:hover{background:#062a66;}
+.table-area{
+    background:white;
+    color:#333;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.2);
+    overflow-x:auto;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th, td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+th{background:#f2f2f2;}
+.export-area{margin-bottom:20px;}
+
+
+#modalEdicao{
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.7);
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+}
+#modalEdicao .modal-content{
+    background:white;
+    color:#333;
+    padding:20px;
+    border-radius:10px;
+    width:90%;
+    max-width:500px;
+}
+#modalEdicao .modal-content input{
+    width:100%;
+    margin:5px 0;
+}
+#modalEdicao .modal-content button{
+    margin-top:10px;
+}
+
+
+footer.footer{
+    background:rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    text-align:center;
+    padding:15px;
+    font-size:14px;
+}
+footer.footer a{
+    color:white;
+    text-decoration:underline;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <img src="imagens/logojbs.jfif">
+    <nav>
+        <a href="tarefas.html">Tarefas</a>
+        <a href="computadores.html">Computadores</a>
+        <a href="index.html" onclick="logout()">Sair</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    <div class="form-area" id="formComputador">
+        <h3>Adicionar Computador</h3>
+        <input type="text" id="usuario" placeholder="Nome do Usuário">
+        <input type="text" id="nomePc" placeholder="Nome do Computador">
+        <input type="text" id="setor" placeholder="Setor">
+        <input type="text" id="serviceTag" placeholder="Service Tag">
+        <input type="text" id="patrimonio" placeholder="Patrimônio">
+        <input type="text" id="office" placeholder="Office">
+        <input type="text" id="obs" placeholder="Observações">
+        <br><br>
+        <button onclick="adicionarComputador()">Salvar</button>
+    </div>
+
+    <div class="export-area">
+        <button id="btnExportar" onclick="exportExcel()">Exportar Excel</button>
+    </div>
+
+    <div class="table-area">
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>Nome do PC</th>
+                    <th>Setor</th>
+                    <th>Service Tag</th>
+                    <th>Patrimônio</th>
+                    <th>Office</th>
+                    <th>Obs</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaComputadores"></tbody>
+        </table>
+    </div>
+</div>
+
+
+<div id="modalEdicao">
+    <div class="modal-content">
+        <h3>Editar Computador</h3>
+        <input type="text" id="editUsuario" placeholder="Nome do Usuário">
+        <input type="text" id="editNomePc" placeholder="Nome do Computador">
+        <input type="text" id="editSetor" placeholder="Setor">
+        <input type="text" id="editServiceTag" placeholder="Service Tag">
+        <input type="text" id="editPatrimonio" placeholder="Patrimônio">
+        <input type="text" id="editOffice" placeholder="Office">
+        <input type="text" id="editObs" placeholder="Observações">
+        <button onclick="salvarEdicao()">Salvar Alterações</button>
+        <button onclick="fecharModal()">Cancelar</button>
+    </div>
+</div>
+
+<script>
+
+let usuarioLogado = JSON.parse(localStorage.getItem("usuarioLogado"));
+if(!usuarioLogado) window.location.href="index.html";
+
+const ADMIN_EMAIL = "gustavo.aquiel@jbs.com.br";
+let computadores = JSON.parse(localStorage.getItem("computadores")) || [];
+let indiceEditando = null;
+
+function renderizarComputadores(){
+    const tabela = document.getElementById("tabelaComputadores");
+    tabela.innerHTML = "";
+    computadores.forEach((c,index)=>{
+        if(usuarioLogado.email !== ADMIN_EMAIL && c.uid !== usuarioLogado.uid) return;
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${c.usuario}</td>
+            <td>${c.nomePc}</td>
+            <td>${c.setor}</td>
+            <td>${c.serviceTag}</td>
+            <td>${c.patrimonio}</td>
+            <td>${c.office}</td>
+            <td>${c.obs || ""}</td>
+            <td>
+                ${usuarioLogado.email === ADMIN_EMAIL ? `
+                    <button onclick="abrirModal(${index})">Editar</button>
+                    <button onclick="excluirComputador(${index})">Excluir</button>
+                ` : ""}
+            </td>
+        `;
+        tabela.appendChild(row);
+    });
+    controlarPermissoes();
+}
+
+function adicionarComputador(){
+    if(usuarioLogado.email === ADMIN_EMAIL){ alert("Administrador não pode cadastrar computadores."); return; }
+    const usuario = document.getElementById("usuario").value;
+    const nomePc = document.getElementById("nomePc").value;
+    const setor = document.getElementById("setor").value;
+    const serviceTag = document.getElementById("serviceTag").value;
+    const patrimonio = document.getElementById("patrimonio").value;
+    const office = document.getElementById("office").value;
+    const obs = document.getElementById("obs").value;
+    if(!usuario || !nomePc){ alert("Preencha Usuário e Nome do PC"); return; }
+    computadores.push({ uid: usuarioLogado.uid, usuario, nomePc, setor, serviceTag, patrimonio, office, obs });
+    salvarComputadores(); renderizarComputadores();
+    document.querySelectorAll(".form-area input").forEach(i=>i.value="");
+}
+
+function abrirModal(index){
+    if(usuarioLogado.email !== ADMIN_EMAIL) return;
+    indiceEditando = index;
+    const c = computadores[index];
+    document.getElementById("editUsuario").value = c.usuario;
+    document.getElementById("editNomePc").value = c.nomePc;
+    document.getElementById("editSetor").value = c.setor;
+    document.getElementById("editServiceTag").value = c.serviceTag;
+    document.getElementById("editPatrimonio").value = c.patrimonio;
+    document.getElementById("editOffice").value = c.office;
+    document.getElementById("editObs").value = c.obs || "";
+    document.getElementById("modalEdicao").style.display = "flex";
+}
+
+function salvarEdicao(){
+    if(indiceEditando===null) return;
+    computadores[indiceEditando] = {
+        ...computadores[indiceEditando],
+        usuario: document.getElementById("editUsuario").value,
+        nomePc: document.getElementById("editNomePc").value,
+        setor: document.getElementById("editSetor").value,
+        serviceTag: document.getElementById("editServiceTag").value,
+        patrimonio: document.getElementById("editPatrimonio").value,
+        office: document.getElementById("editOffice").value,
+        obs: document.getElementById("editObs").value
+    };
+    fecharModal();
+    salvarComputadores();
+    renderizarComputadores();
+}
+
+function fecharModal(){ document.getElementById("modalEdicao").style.display="none"; indiceEditando=null; }
+function excluirComputador(index){ if(usuarioLogado.email!==ADMIN_EMAIL)return; if(!confirm("Deseja excluir este computador?"))return; computadores.splice(index,1); salvarComputadores(); renderizarComputadores(); }
+function exportExcel(){ if(usuarioLogado.email!==ADMIN_EMAIL){ alert("Apenas administrador pode exportar."); return; } let csv="Usuário,Nome do PC,Setor,Service Tag,Patrimônio,Office,Obs\n"; computadores.forEach(c=>{ csv+=`"${c.usuario}","${c.nomePc}","${c.setor}","${c.serviceTag}","${c.patrimonio}","${c.office}","${c.obs || ""}"\n`; }); const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}); const link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download="computadores.csv"; link.click();}
+function controlarPermissoes(){ const form=document.getElementById("formComputador"); const btnExportar=document.getElementById("btnExportar"); if(usuarioLogado.email===ADMIN_EMAIL){ if(form)form.style.display="none"; if(btnExportar)btnExportar.style.display="inline-block"; }else{ if(form)form.style.display="block"; if(btnExportar)btnExportar.style.display="none"; } }
+function logout(){ localStorage.removeItem("usuarioLogado"); window.location.href="index.html"; }
+function salvarComputadores(){ localStorage.setItem("computadores",JSON.stringify(computadores)); }
+
+renderizarComputadores();
+</script>
+
+<footer class="footer">
+    Qualquer dúvida: <a href="mailto:gustavo.aquiel@jbs.com.br">gustavo.aquiel@jbs.com.br</a> <br>
+    Desenvolvido por: <strong>Gustavo Aquiel</strong>
+</footer>
+
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+</body>
+</html>
