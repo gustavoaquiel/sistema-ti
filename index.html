@@ -143,7 +143,14 @@ a{
 
 <script type="module">
 import { auth } from "./firebase.js";
-import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        window.location.href = "tarefas.html";
+    }
+});
 
 window.login = function(){
     const email = document.getElementById("email").value;
@@ -152,17 +159,13 @@ window.login = function(){
     if(!email || !senha) return alert("Preencha todos os campos");
 
     signInWithEmailAndPassword(auth, email, senha)
-    .then((userCredential)=>{
-        const user = userCredential.user;
+    .then(() => {
         
-        localStorage.setItem("usuarioLogado", JSON.stringify({ uid: user.uid, email: user.email }));
-        window.location.href="tarefas.html";
     })
     .catch((error)=>{
-        alert("Erro ao entrar: "+error.message);
+        alert("Erro ao entrar: " + error.message);
     });
 }
 </script>
-<script type="module" src="script.js"></script>
 </body>
 </html>

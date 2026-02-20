@@ -206,43 +206,92 @@ nav a:hover{
     <p>Desenvolvido por: <strong>Gustavo Aquiel</strong></p>
 </div>
 
-<script>
-let usuarioLogado = JSON.parse(localStorage.getItem("usuarioLogado"));
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+    getAuth, 
+    onAuthStateChanged,
+    signOut 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    deleteDoc, 
+    doc, 
+    updateDoc, 
+    query, 
+    where 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-if(!usuarioLogado){
-    alert("Acesso não autorizado");
-    window.location.href="index.html";
+const firebaseConfig = {
+  apiKey: "AIzaSyAdG2I9naqVe1tT2Y1dRAD-McuGaJiyTNU",
+  authDomain: "sistema-ti-jbs.firebaseapp.com",
+  projectId: "sistema-ti-jbs",
+  storageBucket: "sistema-ti-jbs.firebasestorage.app",
+  messagingSenderId: "1033258512541",
+  appId: "1:1033258512541:web:1b9755d5957c7e37736474"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let tarefas = []; 
+
+
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        window.location.href = "login.html";
+        return;
+    }
+    
+    currentUser = user;
+    carregarTarefas();
+});
+
+
+async function carregarTarefas() {
+    try {
+        const consulta = query(
+            collection(db, "tarefas"),
+            where("uid", "==", currentUser.uid)
+        );
+
+        const snapshot = await getDocs(consulta);
+        tarefas = [];
+        
+        snapshot.forEach(doc => {
+            tarefas.push({
+                id: doc.id, 
+                ...doc.data()
+            });
+        });
+        
+        renderizar(); 
+    } catch (error) {
+        console.error("Erro ao carregar tarefas:", error);
+        alert("Erro ao carregar tarefas. Tente novamente.");
+    }
 }
 
-let tarefas = JSON.parse(localStorage.getItem("tarefas")) || [];
 
-function salvarLocal(){
-    localStorage.setItem("tarefas", JSON.stringify(tarefas));
-}
-
-
-function tarefasDoUsuario(){
-    return tarefas
-        .map((t, index) => ({...t, originalIndex: index}))
-        .filter(t => t.uid === usuarioLogado.uid);
-}
-
-function renderizar(){
+function renderizar() {
     document.getElementById("alta").innerHTML = "<h3>🔴 Alta</h3>";
     document.getElementById("media").innerHTML = "<h3>🟠 Média</h3>";
     document.getElementById("baixa").innerHTML = "<h3>🟢 Baixa</h3>";
 
-    const lista = tarefasDoUsuario();
-
-    lista.forEach((tarefa) => {
+    tarefas.forEach((tarefa) => {
         const card = document.createElement("div");
         card.className = "card";
-        if(tarefa.concluida) card.classList.add("concluida");
+        if (tarefa.concluida) card.classList.add("concluida");
 
         card.innerHTML = `
             <div class="card-actions">
-                <i class="fa-solid fa-check" onclick="concluir(${tarefa.originalIndex})"></i>
-                <i class="fa-solid fa-trash" onclick="excluir(${tarefa.originalIndex})"></i>
+                <i class="fa-solid fa-check" onclick="concluir('${tarefa.id}')"></i>
+                <i class="fa-solid fa-trash" onclick="excluir('${tarefa.id}')"></i>
             </div>
             <strong>${tarefa.titulo}</strong>
             <small>${tarefa.descricao || ""}</small>
@@ -253,55 +302,100 @@ function renderizar(){
     });
 }
 
-function adicionarTarefa(){
+
+window.adicionarTarefa = async function() {
     const titulo = document.getElementById("titulo").value;
     const descricao = document.getElementById("descricao").value;
     const prioridade = document.getElementById("prioridade").value;
     const data = document.getElementById("data").value;
 
-    if(!titulo){
+    if (!titulo) {
         alert("Digite um título");
         return;
     }
 
-    tarefas.push({
-        uid: usuarioLogado.uid,
-        titulo,
-        descricao,
-        prioridade,
-        data,
-        concluida:false
+    try {
+        
+        const docRef = await addDoc(collection(db, "tarefas"), {
+            uid: currentUser.uid,
+            titulo,
+            descricao,
+            prioridade,
+            data,
+            concluida: false,
+            dataCriacao: new Date().toISOString()
+        });
+
+        
+        tarefas.push({
+            id: docRef.id,
+            uid: currentUser.uid,
+            titulo,
+            descricao,
+            prioridade,
+            data,
+            concluida: false
+        });
+
+        renderizar();
+
+        
+        document.getElementById("titulo").value = "";
+        document.getElementById("descricao").value = "";
+        document.getElementById("data").value = "";
+    } catch (error) {
+        console.error("Erro ao adicionar tarefa:", error);
+        alert("Erro ao adicionar tarefa. Tente novamente.");
+    }
+}
+
+
+window.concluir = async function(id) {
+    try {
+        
+        const tarefa = tarefas.find(t => t.id === id);
+        if (!tarefa) return;
+
+        
+        const docRef = doc(db, "tarefas", id);
+        await updateDoc(docRef, {
+            concluida: !tarefa.concluida
+        });
+
+        
+        tarefa.concluida = !tarefa.concluida;
+        renderizar();
+    } catch (error) {
+        console.error("Erro ao concluir tarefa:", error);
+        alert("Erro ao atualizar tarefa. Tente novamente.");
+    }
+}
+
+
+window.excluir = async function(id) {
+    if (!confirm("Deseja excluir esta tarefa?")) return;
+
+    try {
+        
+        await deleteDoc(doc(db, "tarefas", id));
+
+        
+        tarefas = tarefas.filter(t => t.id !== id);
+        renderizar();
+    } catch (error) {
+        console.error("Erro ao excluir tarefa:", error);
+        alert("Erro ao excluir tarefa. Tente novamente.");
+    }
+}
+
+
+window.logout = function() {
+    signOut(auth).then(() => {
+        window.location.href = "index.html";
     });
-
-    salvarLocal();
-    renderizar();
-
-    document.getElementById("titulo").value="";
-    document.getElementById("descricao").value="";
-    document.getElementById("data").value="";
 }
 
-function concluir(index){
-    if(tarefas[index].uid !== usuarioLogado.uid) return;
-    tarefas[index].concluida = !tarefas[index].concluida;
-    salvarLocal();
-    renderizar();
-}
 
-function excluir(index){
-    if(tarefas[index].uid !== usuarioLogado.uid) return;
-    if(!confirm("Deseja excluir esta tarefa?")) return;
-    tarefas.splice(index,1);
-    salvarLocal();
-    renderizar();
-}
-
-function logout(){
-    localStorage.removeItem("usuarioLogado");
-    window.location.href="index.html";
-}
-
-renderizar();
 </script>
 
 </body>

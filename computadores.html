@@ -219,9 +219,8 @@ const db = getFirestore(app);
 let currentUser = null;
 let isAdmin = false;
 const ADMIN_EMAIL = "gustavo.aquiel@jbs.com.br";
-let indiceEditando = null; // Agora vai guardar o ID do documento, não índice
+let indiceEditando = null; 
 
-// Verificar autenticação
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     window.location.href = "index.html";
@@ -231,7 +230,7 @@ onAuthStateChanged(auth, (user) => {
   currentUser = user;
   isAdmin = user.email === ADMIN_EMAIL;
   
-  // Controlar permissões (igual ao seu código original)
+  
   const form = document.getElementById("formComputador");
   const btnExportar = document.getElementById("btnExportar");
   
@@ -246,7 +245,7 @@ onAuthStateChanged(auth, (user) => {
   renderizarComputadores();
 });
 
-// Função para renderizar computadores (MANTIDA SUA ESTRUTURA)
+
 async function renderizarComputadores() {
   const tabela = document.getElementById("tabelaComputadores");
   tabela.innerHTML = "";
@@ -297,7 +296,7 @@ async function renderizarComputadores() {
   }
 }
 
-// Função para adicionar computador (IGUAL sua lógica, mas salva no Firebase)
+
 window.adicionarComputador = async function() {
   if (isAdmin) { 
     alert("Administrador não pode cadastrar computadores."); 
@@ -340,7 +339,7 @@ window.adicionarComputador = async function() {
   }
 }
 
-// Função para abrir modal (agora com ID do Firebase)
+
 window.abrirModal = async function(id) {
   if (!isAdmin) return;
   
@@ -350,7 +349,7 @@ window.abrirModal = async function(id) {
     
     if (docSnap.exists()) {
       const data = docSnap.data();
-      indiceEditando = id; // Guarda o ID do Firebase
+      indiceEditando = id; 
       
       document.getElementById("editUsuario").value = data.usuario || '';
       document.getElementById("editNomePc").value = data.nomePc || '';
@@ -368,7 +367,7 @@ window.abrirModal = async function(id) {
   }
 }
 
-// Função para salvar edição
+
 window.salvarEdicao = async function() {
   if (!isAdmin || !indiceEditando) return;
 
@@ -394,7 +393,7 @@ window.salvarEdicao = async function() {
   }
 }
 
-// Função para excluir
+
 window.excluirComputador = async function(id) {
   if (!isAdmin) return;
   
@@ -410,7 +409,7 @@ window.excluirComputador = async function(id) {
   }
 }
 
-// Função para exportar Excel
+
 window.exportExcel = async function() {
   if (!isAdmin) { 
     alert("Apenas administrador pode exportar."); 
@@ -425,7 +424,7 @@ window.exportExcel = async function() {
       dados.push(doc.data());
     });
 
-    // Criar CSV (igual seu código original)
+    
     let csv = "Usuário,Nome do PC,Setor,Service Tag,Patrimônio,Office,Obs\n";
     dados.forEach(c => {
       csv += `"${c.usuario}","${c.nomePc}","${c.setor}","${c.serviceTag}","${c.patrimonio}","${c.office}","${c.obs || ""}"\n`;
@@ -442,7 +441,7 @@ window.exportExcel = async function() {
   }
 }
 
-// Funções auxiliares (mantidas iguais)
+
 window.fecharModal = function() {
   document.getElementById("modalEdicao").style.display = "none";
   indiceEditando = null;
@@ -454,8 +453,7 @@ window.logout = function() {
   });
 }
 
-// Removemos as funções que não serão mais usadas:
-// salvarComputadores() e controlarPermissoes() (agora está no onAuthStateChanged)
+
 </script>
 
 </body>

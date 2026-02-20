@@ -144,10 +144,9 @@ a{
 
 <script type="module">
 import { auth } from "./firebase.js";
-import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 window.cadastrar = function(){
-
     const email = document.getElementById("cadastroEmail").value;
     const senha = document.getElementById("cadastroSenha").value;
 
@@ -156,22 +155,13 @@ window.cadastrar = function(){
     }
 
     createUserWithEmailAndPassword(auth, email, senha)
-    .then((userCredential) => {
-
-        const user = userCredential.user;
-
-        localStorage.setItem("usuarioLogado", JSON.stringify({
-            email: user.email,
-            uid: user.uid
-        }));
-
+    .then(() => {
         alert("Usuário criado com sucesso!");
         window.location.href = "tarefas.html";
     })
     .catch((error) => {
         alert("Erro ao cadastrar: " + error.message);
     });
-
 }
 </script>
 
