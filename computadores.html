@@ -183,104 +183,280 @@ footer.footer a{
     </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getAuth, 
+  onAuthStateChanged,
+  signOut 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  deleteDoc, 
+  doc, 
+  updateDoc, 
+  query, 
+  where,
+  getDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-let usuarioLogado = JSON.parse(localStorage.getItem("usuarioLogado"));
-if(!usuarioLogado) window.location.href="index.html";
+const firebaseConfig = {
+  apiKey: "AIzaSyAdG2I9naqVe1tT2Y1dRAD-McuGaJiyTNU",
+  authDomain: "sistema-ti-jbs.firebaseapp.com",
+  projectId: "sistema-ti-jbs",
+  storageBucket: "sistema-ti-jbs.firebasestorage.app",
+  messagingSenderId: "1033258512541",
+  appId: "1:1033258512541:web:1b9755d5957c7e37736474"
+};
 
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let isAdmin = false;
 const ADMIN_EMAIL = "gustavo.aquiel@jbs.com.br";
-let computadores = JSON.parse(localStorage.getItem("computadores")) || [];
-let indiceEditando = null;
+let indiceEditando = null; // Agora vai guardar o ID do documento, não índice
 
-function renderizarComputadores(){
-    const tabela = document.getElementById("tabelaComputadores");
-    tabela.innerHTML = "";
-    computadores.forEach((c,index)=>{
-        if(usuarioLogado.email !== ADMIN_EMAIL && c.uid !== usuarioLogado.uid) return;
+// Verificar autenticação
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+  
+  currentUser = user;
+  isAdmin = user.email === ADMIN_EMAIL;
+  
+  // Controlar permissões (igual ao seu código original)
+  const form = document.getElementById("formComputador");
+  const btnExportar = document.getElementById("btnExportar");
+  
+  if (isAdmin) {
+    if (form) form.style.display = "none";
+    if (btnExportar) btnExportar.style.display = "inline-block";
+  } else {
+    if (form) form.style.display = "block";
+    if (btnExportar) btnExportar.style.display = "none";
+  }
+  
+  renderizarComputadores();
+});
 
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${c.usuario}</td>
-            <td>${c.nomePc}</td>
-            <td>${c.setor}</td>
-            <td>${c.serviceTag}</td>
-            <td>${c.patrimonio}</td>
-            <td>${c.office}</td>
-            <td>${c.obs || ""}</td>
-            <td>
-                ${usuarioLogado.email === ADMIN_EMAIL ? `
-                    <button onclick="abrirModal(${index})">Editar</button>
-                    <button onclick="excluirComputador(${index})">Excluir</button>
-                ` : ""}
-            </td>
-        `;
-        tabela.appendChild(row);
+// Função para renderizar computadores (MANTIDA SUA ESTRUTURA)
+async function renderizarComputadores() {
+  const tabela = document.getElementById("tabelaComputadores");
+  tabela.innerHTML = "";
+
+  try {
+    let consulta;
+    if (isAdmin) {
+      consulta = collection(db, "computadores");
+    } else {
+      consulta = query(
+        collection(db, "computadores"),
+        where("uid", "==", currentUser.uid)
+      );
+    }
+
+    const snapshot = await getDocs(consulta);
+    
+    if (snapshot.empty) {
+      tabela.innerHTML = "<tr><td colspan='8'>Nenhum computador encontrado</td></tr>";
+      return;
+    }
+
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${data.usuario || ''}</td>
+        <td>${data.nomePc || ''}</td>
+        <td>${data.setor || ''}</td>
+        <td>${data.serviceTag || ''}</td>
+        <td>${data.patrimonio || ''}</td>
+        <td>${data.office || ''}</td>
+        <td>${data.obs || ''}</td>
+        <td>
+          ${isAdmin ? `
+            <button onclick="abrirModal('${id}')">Editar</button>
+            <button onclick="excluirComputador('${id}')">Excluir</button>
+          ` : ""}
+        </td>
+      `;
+      tabela.appendChild(row);
     });
-    controlarPermissoes();
+  } catch (error) {
+    console.error("Erro ao carregar:", error);
+    tabela.innerHTML = "<tr><td colspan='8'>Erro ao carregar dados</td></tr>";
+  }
 }
 
-function adicionarComputador(){
-    if(usuarioLogado.email === ADMIN_EMAIL){ alert("Administrador não pode cadastrar computadores."); return; }
-    const usuario = document.getElementById("usuario").value;
-    const nomePc = document.getElementById("nomePc").value;
-    const setor = document.getElementById("setor").value;
-    const serviceTag = document.getElementById("serviceTag").value;
-    const patrimonio = document.getElementById("patrimonio").value;
-    const office = document.getElementById("office").value;
-    const obs = document.getElementById("obs").value;
-    if(!usuario || !nomePc){ alert("Preencha Usuário e Nome do PC"); return; }
-    computadores.push({ uid: usuarioLogado.uid, usuario, nomePc, setor, serviceTag, patrimonio, office, obs });
-    salvarComputadores(); renderizarComputadores();
-    document.querySelectorAll(".form-area input").forEach(i=>i.value="");
-}
-
-function abrirModal(index){
-    if(usuarioLogado.email !== ADMIN_EMAIL) return;
-    indiceEditando = index;
-    const c = computadores[index];
-    document.getElementById("editUsuario").value = c.usuario;
-    document.getElementById("editNomePc").value = c.nomePc;
-    document.getElementById("editSetor").value = c.setor;
-    document.getElementById("editServiceTag").value = c.serviceTag;
-    document.getElementById("editPatrimonio").value = c.patrimonio;
-    document.getElementById("editOffice").value = c.office;
-    document.getElementById("editObs").value = c.obs || "";
-    document.getElementById("modalEdicao").style.display = "flex";
-}
-
-function salvarEdicao(){
-    if(indiceEditando===null) return;
-    computadores[indiceEditando] = {
-        ...computadores[indiceEditando],
-        usuario: document.getElementById("editUsuario").value,
-        nomePc: document.getElementById("editNomePc").value,
-        setor: document.getElementById("editSetor").value,
-        serviceTag: document.getElementById("editServiceTag").value,
-        patrimonio: document.getElementById("editPatrimonio").value,
-        office: document.getElementById("editOffice").value,
-        obs: document.getElementById("editObs").value
-    };
-    fecharModal();
-    salvarComputadores();
+// Função para adicionar computador (IGUAL sua lógica, mas salva no Firebase)
+window.adicionarComputador = async function() {
+  if (isAdmin) { 
+    alert("Administrador não pode cadastrar computadores."); 
+    return; 
+  }
+  
+  const usuario = document.getElementById("usuario").value;
+  const nomePc = document.getElementById("nomePc").value;
+  const setor = document.getElementById("setor").value;
+  const serviceTag = document.getElementById("serviceTag").value;
+  const patrimonio = document.getElementById("patrimonio").value;
+  const office = document.getElementById("office").value;
+  const obs = document.getElementById("obs").value;
+  
+  if(!usuario || !nomePc) { 
+    alert("Preencha Usuário e Nome do PC"); 
+    return; 
+  }
+  
+  try {
+    await addDoc(collection(db, "computadores"), {
+      uid: currentUser.uid,
+      usuario, 
+      nomePc, 
+      setor, 
+      serviceTag, 
+      patrimonio, 
+      office, 
+      obs,
+      email: currentUser.email,
+      dataCadastro: new Date().toISOString()
+    });
+    
+    alert("Computador cadastrado com sucesso!");
+    document.querySelectorAll(".form-area input").forEach(i => i.value = "");
     renderizarComputadores();
+  } catch (error) {
+    console.error("Erro ao cadastrar:", error);
+    alert("Erro ao cadastrar computador. Tente novamente.");
+  }
 }
 
-function fecharModal(){ document.getElementById("modalEdicao").style.display="none"; indiceEditando=null; }
-function excluirComputador(index){ if(usuarioLogado.email!==ADMIN_EMAIL)return; if(!confirm("Deseja excluir este computador?"))return; computadores.splice(index,1); salvarComputadores(); renderizarComputadores(); }
-function exportExcel(){ if(usuarioLogado.email!==ADMIN_EMAIL){ alert("Apenas administrador pode exportar."); return; } let csv="Usuário,Nome do PC,Setor,Service Tag,Patrimônio,Office,Obs\n"; computadores.forEach(c=>{ csv+=`"${c.usuario}","${c.nomePc}","${c.setor}","${c.serviceTag}","${c.patrimonio}","${c.office}","${c.obs || ""}"\n`; }); const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}); const link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download="computadores.csv"; link.click();}
-function controlarPermissoes(){ const form=document.getElementById("formComputador"); const btnExportar=document.getElementById("btnExportar"); if(usuarioLogado.email===ADMIN_EMAIL){ if(form)form.style.display="none"; if(btnExportar)btnExportar.style.display="inline-block"; }else{ if(form)form.style.display="block"; if(btnExportar)btnExportar.style.display="none"; } }
-function logout(){ localStorage.removeItem("usuarioLogado"); window.location.href="index.html"; }
-function salvarComputadores(){ localStorage.setItem("computadores",JSON.stringify(computadores)); }
+// Função para abrir modal (agora com ID do Firebase)
+window.abrirModal = async function(id) {
+  if (!isAdmin) return;
+  
+  try {
+    const docRef = doc(db, "computadores", id);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      indiceEditando = id; // Guarda o ID do Firebase
+      
+      document.getElementById("editUsuario").value = data.usuario || '';
+      document.getElementById("editNomePc").value = data.nomePc || '';
+      document.getElementById("editSetor").value = data.setor || '';
+      document.getElementById("editServiceTag").value = data.serviceTag || '';
+      document.getElementById("editPatrimonio").value = data.patrimonio || '';
+      document.getElementById("editOffice").value = data.office || '';
+      document.getElementById("editObs").value = data.obs || '';
+      
+      document.getElementById("modalEdicao").style.display = "flex";
+    }
+  } catch (error) {
+    console.error("Erro ao buscar dados:", error);
+    alert("Erro ao carregar dados para edição");
+  }
+}
 
-renderizarComputadores();
+// Função para salvar edição
+window.salvarEdicao = async function() {
+  if (!isAdmin || !indiceEditando) return;
+
+  try {
+    const docRef = doc(db, "computadores", indiceEditando);
+    
+    await updateDoc(docRef, {
+      usuario: document.getElementById("editUsuario").value,
+      nomePc: document.getElementById("editNomePc").value,
+      setor: document.getElementById("editSetor").value,
+      serviceTag: document.getElementById("editServiceTag").value,
+      patrimonio: document.getElementById("editPatrimonio").value,
+      office: document.getElementById("editOffice").value,
+      obs: document.getElementById("editObs").value
+    });
+
+    alert("Computador atualizado com sucesso!");
+    fecharModal();
+    renderizarComputadores();
+  } catch (error) {
+    console.error("Erro ao atualizar:", error);
+    alert("Erro ao atualizar computador");
+  }
+}
+
+// Função para excluir
+window.excluirComputador = async function(id) {
+  if (!isAdmin) return;
+  
+  if (!confirm("Deseja excluir este computador?")) return;
+
+  try {
+    await deleteDoc(doc(db, "computadores", id));
+    alert("Computador excluído com sucesso!");
+    renderizarComputadores();
+  } catch (error) {
+    console.error("Erro ao excluir:", error);
+    alert("Erro ao excluir computador");
+  }
+}
+
+// Função para exportar Excel
+window.exportExcel = async function() {
+  if (!isAdmin) { 
+    alert("Apenas administrador pode exportar."); 
+    return; 
+  }
+
+  try {
+    const snapshot = await getDocs(collection(db, "computadores"));
+    const dados = [];
+    
+    snapshot.forEach(doc => {
+      dados.push(doc.data());
+    });
+
+    // Criar CSV (igual seu código original)
+    let csv = "Usuário,Nome do PC,Setor,Service Tag,Patrimônio,Office,Obs\n";
+    dados.forEach(c => {
+      csv += `"${c.usuario}","${c.nomePc}","${c.setor}","${c.serviceTag}","${c.patrimonio}","${c.office}","${c.obs || ""}"\n`;
+    });
+    
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "computadores.csv";
+    link.click();
+  } catch (error) {
+    console.error("Erro ao exportar:", error);
+    alert("Erro ao exportar dados");
+  }
+}
+
+// Funções auxiliares (mantidas iguais)
+window.fecharModal = function() {
+  document.getElementById("modalEdicao").style.display = "none";
+  indiceEditando = null;
+}
+
+window.logout = function() {
+  signOut(auth).then(() => {
+    window.location.href = "index.html";
+  });
+}
+
+// Removemos as funções que não serão mais usadas:
+// salvarComputadores() e controlarPermissoes() (agora está no onAuthStateChanged)
 </script>
-
-<footer class="footer">
-    Qualquer dúvida: <a href="mailto:gustavo.aquiel@jbs.com.br">gustavo.aquiel@jbs.com.br</a> <br>
-    Desenvolvido por: <strong>Gustavo Aquiel</strong>
-</footer>
-
-<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
 </body>
 </html>
