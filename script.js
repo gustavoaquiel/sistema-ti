@@ -44,7 +44,7 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
 
-  const adminEmail = "SEU_EMAIL_ADMIN_AQUI";
+  const adminEmail = "gustavo.aquiel@jbs.com.br";
   if (user.email === adminEmail) {
     isAdmin = true;
   }
